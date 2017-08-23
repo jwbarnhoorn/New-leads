@@ -1,0 +1,77 @@
+from bs4 import BeautifulSoup
+import requests
+import time 
+from random import randint
+
+#define some attributes
+url = "http://www.fundainbusiness.nl/alle-bedrijfsaanbod/heel-nederland/koop/0-600000/5-dagen/"
+Base_url = "http://www.fundainbusiness.nl/"
+New_links = list()
+Leads = list()
+Keywords = ["Woonbestemming", "woonbestemming","Wonen", "wonen", "Woon", "Gemengd", "gemengd","Gemengde", "gemengde", "Woonhuis", "woonhuis"]
+headers = {
+            'Connection' : 'keep-alive',
+            'Upgrade-Insecure-Requests' : '1',
+            'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36',
+            'Accept' : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Encoding' : 'gzip, deflate, br',
+            'Accept-Language' : 'nl-NL,nl;q=0.8,en-US;q=0.6,en;q=0.4,es;q=0.2',
+            'Cookie' : '__utma=12798129.271302668.1503039836.1503039836.1503228653.2; __utmz=12798129.1503228653.2.2.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided)',
+           }
+counter = 1
+
+#Get links of today
+r=requests.get(url, headers=headers)
+soup = BeautifulSoup(r.text, "html.parser")
+
+Listings = soup.find('div', class_='search-content-output').find_all('a')
+for item in Listings:
+    Link = item.get('href')
+    if '/object-' in Link:
+        Link = Base_url + Link         
+        New_links.append(Link)
+
+New_links = list(set(New_links))
+print("Number of new links found: "+str(len(New_links)))
+print(New_links)
+
+#Scrap info from every new link
+#to avoid being blocked,every even call should be delayed significant.
+for link in New_links:
+    if counter % 2 == 0:
+         time.sleep(randint(1200,1400))
+         counter += 1
+    else:
+         time.sleep(randint(5,10))
+         counter += 1
+        
+    print("Working on following link:" +link)
+    r=requests.get(link, headers=headers)
+    print(r.status_code)
+    soup = BeautifulSoup(r.text, "html.parser")
+    Beschrijving = soup.find('div', class_='object-description-body')
+    Mogelijke_functies = soup.find('dt', text='Mogelijke functie(s)')
+    
+    if Mogelijke_functies is not None:
+        Mogelijke_funties = soup.find('dt', text='Mogelijke functie(s)').findNext('dd').getText()
+    else: 
+        Mogelijke_functies = str("Empty")
+        
+    if Beschrijving is not None:
+        Beschrijving = soup.find('div', class_='object-description-body').getText()
+        print("I think this one was not blocked...")
+    else: 
+        Beschrijving = str("Empty")  
+        print("I think we got blocked at this one.")
+        
+#Decide whether object is interesting
+    for i in Keywords:
+        if (i in Mogelijke_functies) or (i in Beschrijving):
+            Leads.append(link)
+            print("...and its a new lead!")
+           
+print("Number of new leads found: "+str(len(Leads)))
+#Sent results to inbox of JW
+print(Leads)
+
+
